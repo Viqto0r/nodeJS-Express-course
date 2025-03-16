@@ -16,6 +16,7 @@ const authRouter = require('./routes/auth')
 
 const variablesMiddleware = require('./middleware/variables')
 const userMiddleware = require('./middleware/user')
+const errorMiddleware = require('./middleware/error')
 
 const app = express()
 
@@ -57,6 +58,8 @@ app.use('/add', addRoutes)
 app.use('/cart', cartRoutes)
 app.use('/orders', ordersRoutes)
 app.use('/auth', authRouter)
+
+app.use(errorMiddleware) // должен быть самым последним
 
 const PORT = process.env.PORT || 3000
 

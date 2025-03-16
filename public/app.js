@@ -38,7 +38,6 @@ if ($cart) {
       })
         .then((res) => res.json())
         .then((cart) => {
-          console.log(cart)
           if (cart.courses.length) {
             const tbody = $cart.querySelector('tbody')
             const price = $cart.querySelector('.price')

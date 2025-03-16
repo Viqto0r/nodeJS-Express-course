@@ -3,7 +3,10 @@ const User = require('../models/user')
 const bcrypt = require('bcryptjs')
 const crypto = require('crypto')
 const nodemailer = require('nodemailer')
+const { validationResult } = require('express-validator/check')
 const { NODEMAILER_USER, NODEMAILER_PASS } = require('../keys')
+
+const { registerValidators, loginValidators } = require('../utils/validators')
 
 const regEmail = require('../emails/registration')
 const resetEmail = require('../emails/reset')
@@ -33,23 +36,15 @@ router.get('/logout', async (req, res) => {
   })
 })
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginValidators, async (req, res) => {
   try {
-    const { email, password } = req.body
-
+    const { email } = req.body
     const candidate = await User.findOne({ email })
 
-    if (!candidate) {
-      req.flash('login-error', 'Неверный логин или пароль')
+    const errors = validationResult(req)
 
-      return res.redirect('/auth/login')
-    }
-
-    const areSame = await bcrypt.compare(password, candidate.password)
-
-    if (!areSame) {
-      req.flash('login-error', 'Неверный логин или пароль')
-
+    if (!errors.isEmpty()) {
+      req.flash('login-error', errors.array()[0].msg)
       return res.redirect('/auth/login')
     }
 
@@ -67,30 +62,31 @@ router.post('/login', async (req, res) => {
   }
 })
 
-router.post('/register', async (req, res) => {
+router.post('/register', registerValidators, async (req, res) => {
   try {
-    const { email, password, repeat, name } = req.body
+    const { email, password, name } = req.body
 
-    const candidate = await User.findOne({ email })
+    const errors = validationResult(req)
 
-    if (candidate) {
-      req.flash('register-error', 'Пользователь с таким email уже существует')
-      res.redirect('/auth/login#register')
-    } else {
-      const hashPassword = await bcrypt.hash(password, 10)
+    if (!errors.isEmpty()) {
+      req.flash('register-error', errors.array()[0].msg)
 
-      const user = new User({
-        email,
-        name,
-        password: hashPassword,
-        cart: { items: [] },
-      })
-
-      await user.save()
-
-      res.redirect('/auth/login')
-      await transporter.sendMail(regEmail(email))
+      return res.status(422).redirect('/auth/login#register')
     }
+
+    const hashPassword = await bcrypt.hash(password, 10)
+
+    const user = new User({
+      email,
+      name,
+      password: hashPassword,
+      cart: { items: [] },
+    })
+
+    await user.save()
+
+    res.redirect('/auth/login')
+    await transporter.sendMail(regEmail(email))
   } catch (e) {
     console.log(e)
   }
@@ -162,7 +158,6 @@ router.get('/password/:token', async (req, res) => {
 
 router.post('/password', async (req, res) => {
   try {
-    console.log(req.body)
     const { token, userId, password } = req.body
 
     const user = await User.findOne({

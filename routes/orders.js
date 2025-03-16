@@ -9,6 +9,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const orders = await Order.find({ 'user.userId': req.user._id })
       .populate('user.userId')
+      // .lean трансформирует в обычный JS объект, чтобы не было ошибок Handlebars
       .lean()
 
     res.render('orders', {

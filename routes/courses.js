@@ -1,7 +1,9 @@
 const { Router } = require('express')
 const Course = require('../models/course')
+const { validationResult } = require('express-validator/check')
 
 const auth = require('../middleware/auth')
+const { courseValidators } = require('../utils/validators')
 
 const router = Router()
 
@@ -13,6 +15,7 @@ router.get('/', async (req, res) => {
     const courses = await Course.find()
       .populate('userId', 'email name')
       .select('price title img')
+      // .lean трансформирует в обычный JS объект, чтобы не было ошибок Handlebars
       .lean()
 
     res.render('courses', {
@@ -32,6 +35,7 @@ router.get('/:id/edit', auth, async (req, res) => {
       return res.redirect('/')
     }
 
+    // .lean трансформирует в обычный JS объект, чтобы не было ошибок Handlebars
     const course = await Course.findById(req.params.id).lean()
 
     if (!isOwner(course, req)) {
@@ -47,10 +51,15 @@ router.get('/:id/edit', auth, async (req, res) => {
   }
 })
 
-router.post('/edit', auth, async (req, res) => {
-  try {
-    const { id, ...restBody } = req.body
+router.post('/edit', auth, courseValidators, async (req, res) => {
+  const errors = validationResult(req)
+  const { id, ...restBody } = req.body
 
+  if (!errors.isEmpty()) {
+    return res.status(422).redirect(`/courses/${id}/edit?allow=true`)
+  }
+
+  try {
     const course = await Course.findById(id)
 
     if (!isOwner(course, req)) {
@@ -79,6 +88,7 @@ router.post('/remove', auth, async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
+    // .lean трансформирует в обычный JS объект, чтобы не было ошибок Handlebars
     const course = await Course.findById(req.params.id).lean()
 
     res.render('course', {
