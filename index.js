@@ -19,7 +19,7 @@ const userMiddleware = require('./middleware/user')
 
 const app = express()
 
-const MONGODB_URI = 'mongodb://localhost:27017/shop'
+const { MONGODB_URI, SESSION_SECRET } = require('./keys')
 
 const store = new MongoStore({
   collection: 'sessions',
@@ -29,6 +29,7 @@ const store = new MongoStore({
 const hbs = handlebars.create({
   defaultLayout: 'main',
   extname: 'hbs',
+  helpers: require('./utils/hbs-helpers'),
 })
 
 app.engine('hbs', hbs.engine)
@@ -39,7 +40,7 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.use(express.urlencoded({ extended: true }))
 app.use(
   session({
-    secret: 'some secret value',
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store,
